@@ -272,6 +272,13 @@ class MinibatchSource(cntk_py.MinibatchSource):
         Gets the description of the stream with given name.
         Throws an exception if there are none or multiple streams with this
         same name.
+
+        Args:
+            name (str): stream name to fetch
+
+        Returns:
+            :class:`~cntk.cntk_py.StreamInformation`
+            The information for the given stream name.
         '''
         return super(MinibatchSource, self).stream_info(name)
 
@@ -414,6 +421,72 @@ def _py_dict_to_cntk_dict(py_dict):
         else:
             res[k] = cntk_py.DictionaryValue(v)
     return res
+
+
+class StreamInformation(cntk_py.StreamInformation):
+    '''
+    Stream information container.
+
+    Args:
+        TODO
+    '''
+
+    _storage = {'dense': cntk_py.StorageFormat_Dense,
+                'sparse': cntk_py.StorageFormat_SparseCSC}
+
+    def __init__(self, stream_name, stream_id, storage_format, dtype,
+                 sample_layout):
+        super(StreamInformation, self).__init__()
+        self.m_name = stream_name
+        self.m_id = stream_id
+        self.m_storage_format = StreamInformation._storage[storage_format]
+        self.m_element_type = sanitize_dtype_cntk(dtype)
+        self.m_sample_layout = cntk_py.NDShape(sample_layout)
+
+
+class UserMinibatchSource(cntk_py.SwigMinibatchSource):
+    def __init__(self):
+        super(UserMinibatchSource, self).__init__()
+
+        streams = {si.m_name: si for si in self.stream_infos()}
+        from ..utils import Record
+        self.streams = Record(**streams)
+
+    def stream_infos(self):
+        '''
+        Function to be implemented by the user.
+
+        Returns:
+            list of :class:`StreamInformation' instances
+        '''
+        raise NotImplementedError
+
+    def _stream_infos(self, sinfos=None):
+        # sinfos is a list of stream information, which we need to fill in
+        # place, # because Swig demands it that way.
+        import ipdb;ipdb.set_trace()
+        sinfos[:] = self.stream_infos()
+
+    def stream_info(self, name):
+        '''
+        Gets the description of the stream with given name.
+        Throws an exception if there are none or multiple streams with this
+        same name.
+        '''
+        import ipdb;ipdb.set_trace()
+        return super(UserMinibatchSource, self).stream_info(name)
+
+    def __getitem__(self, name):
+        '''
+        Return the :class:`~cntk.cntk_py.StreamInformation` for the given
+        stream name.
+
+        Args:
+            name (str): stream name to fetch
+              :class:`~cntk.cntk_py.StreamInformation` for
+        '''
+        return self.stream_info(name)
+
 
 
 def HTKFeatureDeserializer(streams):
@@ -620,6 +693,7 @@ def StreamDef(field=None, shape=None, is_sparse=False, transforms=None,
     return Record(**config)
     # TODO: we should always use 'shape' unless it is always rank-1 or a single rank's dimension
     # TODO: dim should be inferred from the file, at least for dense
+
 
 # StreamDefs for use in constructing deserializers
 # StreamDefs(query = StreamDef(...), labels = StreamDef(...), ...)

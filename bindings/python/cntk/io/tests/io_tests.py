@@ -5,22 +5,18 @@
 # for full license information.
 # ==============================================================================
 
-import os
 import numpy as np
 import pytest
 
 from cntk.io import MinibatchSource, CTFDeserializer, StreamDefs, StreamDef, \
     ImageDeserializer, _ReaderConfig, FULL_DATA_SWEEP, \
-    sequence_to_cntk_text_format
+    sequence_to_cntk_text_format, UserMinibatchSource, StreamInformation
 import cntk.io.transforms as xforms
-from cntk.cntk_py import to_dictionary
-from cntk.cntk_py import MinibatchSourceConfig
-
-abs_path = os.path.dirname(os.path.abspath(__file__))
+from cntk.cntk_py import to_dictionary, MinibatchSourceConfig
 
 AA = np.asarray
 
-MBDATA_DENSE = r'''0  |S0 0   |S1 0
+MBDATA_DENSE_1 = r'''0  |S0 0   |S1 0
 0   |S0 1   |S1 1
 0   |S0 2
 0   |S0 3   |S1 3
@@ -29,6 +25,14 @@ MBDATA_DENSE = r'''0  |S0 0   |S1 0
 1   |S0 6   |S1 2
 '''
 
+MBDATA_DENSE_2 = r'''0  |S0 0   |S1 0
+0   |S0 1   |S1 1
+0   |S0 2
+0   |S0 3   |S1 3
+0   |S0 4
+0   |S0 5   |S1 1
+0   |S0 6   |S1 2
+'''
 
 MBDATA_SPARSE = r'''0	|x 560:1	|y 1 0 0 0 0
 0	|x 0:1
@@ -307,7 +311,7 @@ def test_image():
 
 
 def test_full_sweep_minibatch(tmpdir):
-    tmpfile = _write_data(tmpdir, MBDATA_DENSE)
+    tmpfile = _write_data(tmpdir, MBDATA_DENSE_1)
 
     mb_source = MinibatchSource(CTFDeserializer(tmpfile, StreamDefs(
         features  = StreamDef(field='S0', shape=1),
@@ -439,15 +443,7 @@ def test_one_sweep(tmpdir):
 
 
 def test_large_minibatch(tmpdir):
-    mbdata = r'''0  |S0 0   |S1 0
-0   |S0 1   |S1 1
-0   |S0 2
-0   |S0 3   |S1 3
-0   |S0 4
-0   |S0 5   |S1 1
-0   |S0 6   |S1 2
-'''
-    tmpfile = _write_data(tmpdir, mbdata)
+    tmpfile = _write_data(tmpdir, MBDATA_DENSE_2)
 
     mb_source = MinibatchSource(CTFDeserializer(tmpfile, StreamDefs(
         features  = StreamDef(field='S0', shape=1),
@@ -546,3 +542,66 @@ filename2	0
 
     mb_source = MinibatchSource([image1, image2])
     assert isinstance(mb_source, MinibatchSource)
+
+
+class UserCTFSource(UserMinibatchSource):
+    def __init__(self):
+        super(UserCTFSource, self).__init__()
+
+    def stream_infos(self):
+        f = StreamInformation("features", 0, 'dense', np.float32, (1,))
+        s = StreamInformation("labels", 1, 'dense', np.float32, (1,))
+        return [f, s]
+
+
+def test_usermbsource(tmpdir):
+    tmpfile = _write_data(tmpdir, MBDATA_SPARSE)
+
+    input_dim = 1000
+    num_output_classes = 5
+
+    # Setting up the native MB source as the ground truth
+    n_mb_source = MinibatchSource(CTFDeserializer(tmpfile, StreamDefs(
+        features=StreamDef(field='x', shape=input_dim, is_sparse=True),
+        labels=StreamDef(field='y', shape=num_output_classes, is_sparse=False)
+    )))
+    n_features_si = n_mb_source['features']
+    n_labels_si = n_mb_source['labels']
+    n_mb = n_mb_source.next_minibatch(7)
+    n_features = n_mb[n_features_si]
+    n_labels = n_mb[n_labels_si]
+
+    # Setting up the user MB source
+    u_mb_source = UserCTFSource()
+    u_features_si = u_mb_source['features']
+    u_labels_si = u_mb_source['labels']
+    u_mb = u_mb_source.next_minibatch(7)
+    u_features = u_mb[u_features_si]
+
+    # 2 samples, max seq len 4, 1000 dim
+    assert u_features.shape == n_features.shape
+    assert u_features.end_of_sweep
+    assert u_features.num_sequences == n_features.num_sequences
+    assert u_features.num_samples == n_features_si.num_samples
+    assert not u_features.is_sparse
+
+    u_labels = u_mb[u_labels_si]
+    # 2 samples, max seq len 1, 5 dim
+    assert u_labels.shape == n_labels.shape
+    assert u_labels.end_of_sweep
+    assert u_labels.num_sequences == u_labels.num_sequences
+    assert u_labels.num_samples == u_labels.num_samples
+    assert not u_labels.is_sparse
+
+    u_label_data = np.asarray(u_labels)
+    n_label_data = np.asarray(n_labels)
+    assert np.allclose(u_label_data, n_label_data)
+
+    u_mb = u_mb_source.next_minibatch(1)
+    u_features = u_mb[u_features_si]
+    u_labels = u_mb[u_labels_si]
+
+    assert not u_features.end_of_sweep
+    assert not u_labels.end_of_sweep
+    assert u_features.num_samples < 7
+    assert u_labels.num_samples == 1
