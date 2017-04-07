@@ -151,7 +151,7 @@ namespace CNTK
     inline std::pair<size_t, size_t> GetMatrixDimensions(const NDShape& viewShape)
     {
         // Ensure none of the shape dimensions are unknown
-        if (viewShape.HasInferredDimension())
+        if (viewShape.HasInferredDimension() || viewShape.HasFreeDimension())
             InvalidArgument("Cannot create an NDArrayView using a view shape '%S' that has unknown dimensions for any of its axes.", viewShape.AsString().c_str());
 
         size_t matrixRowSize = (viewShape.Rank() > 0) ? viewShape[0] : 1;
@@ -364,7 +364,12 @@ namespace CNTK
         for (size_t i = 0; i < outputMapCount.Rank(); ++i)
             paddedOutputMapCount[shapeRank - 1 - i] = outputMapCount[outputMapCount.Rank() - 1 - i];
         if (transpose && paddedOutputMapCount[shapeRank - 1] == NDShape::InferredDimension)  // conovlution transpose, the mapCount in depth is derived from operandShape 
+        {
+            if (operandShape[shapeRank - 1] == NDShape::FreeDimension)
+                InvalidArgument("Deconvolution: Output map count cannot be inferred from operand shape '%S' free dimension.", operandShape.AsString().c_str());
+
             paddedOutputMapCount[shapeRank - 1] = operandShape[shapeRank - 1];
+        }
 
         return{ paddedOutputMapCount, kernelShape };
     }
@@ -580,6 +585,29 @@ namespace CNTK
         return ShapeRowColSplitPoint(var.Shape(), var.IsSparse());
     }
 
+    inline NDShape GetVariableShape(const NDShape& varShape, const Microsoft::MSR::CNTK::TensorShape& computationNodeShape)
+    {
+        auto fullyDefinedVarShape = varShape;
+        if (computationNodeShape.GetRank() < fullyDefinedVarShape.Rank())
+            LogicError("Computation node tensor shape '%s' must not be of lower rank than variable shape '%S'.", ((std::string)computationNodeShape).c_str(), fullyDefinedVarShape.AsString().c_str());
+
+        for (size_t i = 0; i < fullyDefinedVarShape.Rank(); ++i)
+        {
+            if (fullyDefinedVarShape[i] == NDShape::FreeDimension)
+                fullyDefinedVarShape[i] = computationNodeShape.GetDim(i);
+            else if (fullyDefinedVarShape[i] != computationNodeShape.GetDim(i))
+                LogicError("Computation node tensor shape '%s' does not match variable shape '%S'.", ((std::string)computationNodeShape).c_str(), fullyDefinedVarShape.AsString().c_str());
+        }
+
+        for (size_t i = fullyDefinedVarShape.Rank(); i < computationNodeShape.GetRank(); ++i)
+        {
+            if (computationNodeShape.GetDim(i) != 1)
+                LogicError("Computation node tensor shape '%s' does not match variable shape '%S'.", ((std::string)computationNodeShape).c_str(), fullyDefinedVarShape.AsString().c_str());
+        }
+
+        return fullyDefinedVarShape;
+    }
+
     // Helper class to manage a collection of learners.
     class Learners
     {
@@ -625,16 +653,16 @@ namespace CNTK
     class Utils
     {
     public:
-        static void VerifyVariableValueCompatibility(const Variable& var, const ValuePtr& value);
+        static void VerifyVariableValueCompatibility(const Variable& var, const ValuePtr& value, NDShape* inferredVarShape = nullptr);
 
         template <typename ElementType>
-        static std::pair<std::shared_ptr<const Microsoft::MSR::CNTK::Matrix<ElementType>>, Microsoft::MSR::CNTK::MBLayoutPtr> GetCNTKImplMatrixAndMBLayoutFromValueObject(const Variable& var, const ValuePtr& value);
+        static std::pair<std::shared_ptr<const Microsoft::MSR::CNTK::Matrix<ElementType>>, Microsoft::MSR::CNTK::MBLayoutPtr> GetCNTKImplMatrixAndMBLayoutFromValueObject(const Variable& var, const ValuePtr& value, NDShape* inferredVarShape = nullptr);
 
         template <typename ElementType>
         static ValuePtr GetValueObjectFromCNTKImplMatrixAndMBLayout(const NDShape& sampleShape, const std::vector<Axis>& sampleDynamicAxes, const Microsoft::MSR::CNTK::Matrix<ElementType>& matrix, const Microsoft::MSR::CNTK::MBLayoutPtr& layout, bool readOnly = true);
 
         template <typename ElementType>
-        static ValuePtr GetValueObjectFromCNTKImplMatrixAndMBLayout(const Variable& var, const Microsoft::MSR::CNTK::Matrix<ElementType>& matrix, const Microsoft::MSR::CNTK::MBLayoutPtr& layout, bool readOnly = true);
+        static ValuePtr GetValueObjectFromCNTKImplMatrixAndMBLayout(const Variable& var, const Microsoft::MSR::CNTK::ComputationNodeBasePtr& computationNode, const Microsoft::MSR::CNTK::Matrix<ElementType>& matrix, const Microsoft::MSR::CNTK::MBLayoutPtr& layout, bool readOnly = true);
     };
 
     template <typename Container>
