@@ -108,11 +108,8 @@ template<class ElemType>
     if ((maxNumTimeSteps == 1) || (numSequences == 1) || (batchMajor && (layout->GetNumParallelSequences() == layout->GetNumSequences())))
     {
         unpackedData = std::make_shared<Matrix<ElemType>>(packedData.AsReference());
-
         if (maskGaps && layout && layout->HasGaps())
-        {
             MaskMissingColumnsTo<ElemType>(*unpackedData, layout, FrameRange(layout), 0);
-        }
     }
     else
     {

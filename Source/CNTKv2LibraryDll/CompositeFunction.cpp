@@ -22,6 +22,7 @@
 #include "UserDefinedV2FunctionNode.h"
 #include "BlockFunction.h"
 #include "SpecialPurposeNodes.h"
+#include "SequenceReshapeNodes.h"
 
 using namespace Microsoft::MSR::CNTK;
 
@@ -649,6 +650,13 @@ namespace CNTK
                 auto dynamicAxes = variable.DynamicAxes();
                 auto internalCNTKWhereNodeDynamicAxisName = InternalDynamicAxisNameFromDynamicAxes(dynamicAxes);
                 computationNodePtr = New<WhereNode<ElementType>>(network->GetDeviceId(), internalNodeName, internalCNTKWhereNodeDynamicAxisName);
+                break;
+            }
+            case PrimitiveOpType::ToSequence:
+            {
+                auto dynamicAxes = variable.DynamicAxes();
+                auto internalCNTKDynamicAxisName = InternalDynamicAxisNameFromDynamicAxes(dynamicAxes);
+                computationNodePtr = New<ToSequenceNode<ElementType>>(network->GetDeviceId(), internalNodeName, internalCNTKDynamicAxisName);
                 break;
             }
             case PrimitiveOpType::Slice:
