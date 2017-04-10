@@ -9,10 +9,14 @@ import numpy as np
 import pytest
 
 from cntk.io import MinibatchSource, CTFDeserializer, StreamDefs, StreamDef, \
-    ImageDeserializer, _ReaderConfig, FULL_DATA_SWEEP, \
-    sequence_to_cntk_text_format, UserMinibatchSource, StreamInformation
+    ImageDeserializer, FULL_DATA_SWEEP, INFINITELY_REPEAT, \
+    DEFAULT_RANDOMIZATION_WINDOW_IN_CHUNKS, \
+    sequence_to_cntk_text_format, UserMinibatchSource, StreamInformation, \
+    MinibatchData
+from cntk.logging import TraceLevel
 import cntk.io.transforms as xforms
 from cntk.cntk_py import to_dictionary, MinibatchSourceConfig
+from cntk.core import Value
 
 AA = np.asarray
 
@@ -199,7 +203,7 @@ def test_minibatch_source_config_randomization(tmpdir):
     check_default_config_keys(dictionary)
     assert dictionary['randomize'] is True
     assert 10 == dictionary['randomizationWindow']
-    assert dictionary['sampleBasedRandomizationWindow'] is True
+    assert dictionary['sampleBasedRandomizationWindow'] is False
 
     config.randomization_window_in_samples = 100
     with pytest.raises(Exception):
@@ -545,13 +549,30 @@ filename2	0
 
 
 class UserCTFSource(UserMinibatchSource):
-    def __init__(self):
+    def __init__(self, f_dim, l_dim):
+        self.f_dim, self.l_dim = f_dim, l_dim
+
+        self.fsi = StreamInformation("features", 0, 'dense', np.float32, (1,))
+        self.lsi = StreamInformation("labels", 1, 'dense', np.float32, (1,))
+
         super(UserCTFSource, self).__init__()
 
     def stream_infos(self):
-        f = StreamInformation("features", 0, 'dense', np.float32, (1,))
-        s = StreamInformation("labels", 1, 'dense', np.float32, (1,))
-        return [f, s]
+        return [self.fsi, self.lsi]
+
+    def next_minibatch(self, mb_size):
+        mb = {
+                self.fsi: MinibatchData(
+                                Value(batch=np.random.randn(mb_size, self.f_dim)),
+                                num_sequences=mb_size, num_samples=mb_size,
+                                sweep_end=False),
+                self.lsi: MinibatchData(
+                                Value(batch=np.random.randn(mb_size, self.l_dim)),
+                                num_sequences=mb_size, num_samples=mb_size,
+                                sweep_end=False)
+                }
+
+        return mb
 
 
 def test_usermbsource(tmpdir):
@@ -572,7 +593,7 @@ def test_usermbsource(tmpdir):
     n_labels = n_mb[n_labels_si]
 
     # Setting up the user MB source
-    u_mb_source = UserCTFSource()
+    u_mb_source = UserCTFSource(input_dim, num_output_classes)
     u_features_si = u_mb_source['features']
     u_labels_si = u_mb_source['labels']
     u_mb = u_mb_source.next_minibatch(7)

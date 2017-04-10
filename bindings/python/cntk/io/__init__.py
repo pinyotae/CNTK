@@ -7,10 +7,10 @@
 import warnings
 from .. import cntk_py, Value
 from ..tensor import ArrayMixin
-from cntk.internal import typemap
+from cntk.internal import typemap, sanitize_dtype_cntk
 from cntk.device import use_default_device
 from cntk.logging import TraceLevel, get_trace_level
-from cntk.utils import Record
+from cntk.variables import Record
 
 import numpy as np
 import uuid
@@ -27,7 +27,14 @@ class MinibatchData(cntk_py.MinibatchData, ArrayMixin):
     '''
     Holds a minibatch of input data. This is never directly created, but
     only returned by :class:`MinibatchSource` instances.
+
+    Args:
+      TODO
     '''
+
+    def __init__(self, value, num_sequences, num_samples, sweep_end):
+        super(MinibatchData, self).__init__(value, num_sequences, num_samples,
+                                            sweep_end)
 
     @property
     def num_sequences(self):
@@ -428,7 +435,11 @@ class StreamInformation(cntk_py.StreamInformation):
     Stream information container.
 
     Args:
-        TODO
+        stream_name (str): name of the stream
+        stream_id (int): unique ID of the stream
+        storage_format (str): 'dense' or 'sparse'
+        dtype (NumPy type): data type
+        sample_layout (tuple): shape of the elements
     '''
 
     _storage = {'dense': cntk_py.StorageFormat_Dense,
@@ -449,7 +460,6 @@ class UserMinibatchSource(cntk_py.SwigMinibatchSource):
         super(UserMinibatchSource, self).__init__()
 
         streams = {si.m_name: si for si in self.stream_infos()}
-        from ..utils import Record
         self.streams = Record(**streams)
 
     def stream_infos(self):
@@ -464,8 +474,7 @@ class UserMinibatchSource(cntk_py.SwigMinibatchSource):
     def _stream_infos(self, sinfos=None):
         # sinfos is a list of stream information, which we need to fill in
         # place, # because Swig demands it that way.
-        import ipdb;ipdb.set_trace()
-        sinfos[:] = self.stream_infos()
+        sinfos.extend(self.stream_infos())
 
     def stream_info(self, name):
         '''
@@ -473,7 +482,6 @@ class UserMinibatchSource(cntk_py.SwigMinibatchSource):
         Throws an exception if there are none or multiple streams with this
         same name.
         '''
-        import ipdb;ipdb.set_trace()
         return super(UserMinibatchSource, self).stream_info(name)
 
     def __getitem__(self, name):
@@ -486,7 +494,6 @@ class UserMinibatchSource(cntk_py.SwigMinibatchSource):
               :class:`~cntk.cntk_py.StreamInformation` for
         '''
         return self.stream_info(name)
-
 
 
 def HTKFeatureDeserializer(streams):

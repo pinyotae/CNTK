@@ -1458,6 +1458,7 @@ namespace CNTK
             static std::vector<StreamInformation> streamInfoList;
 
             PyObject *pylist = PyList_New(0);
+			Py_INCREF(pylist);
             StreamInfos(pylist);
 
             static std::unordered_set<StreamInformation> streamInfos;
@@ -1483,10 +1484,11 @@ namespace CNTK
 
                 streamInfos.insert(*var);
 
-                Py_DECREF(item);
+                //Py_DECREF(item);
             }
 
             Py_DECREF(iterator);
+			Py_DECREF(pylist);
 
             return streamInfos; 
         }
