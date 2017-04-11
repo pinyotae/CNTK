@@ -28,8 +28,8 @@
     <TestProjectType>UnitTest</TestProjectType>
   </PropertyGroup>
   <PropertyGroup>
-    <CntkCsAssemblyVersion>2.0rc30</CntkCsAssemblyVersion>
-    <CntkCsAssemblyVersion Condition="$(DebugBuild)">2.0rc30d</CntkCsAssemblyVersion>
+    <CntkCsAssemblyVersion>2.0rc1</CntkCsAssemblyVersion>
+    <CntkCsAssemblyVersion Condition="$(DebugBuild)">2.0rc1d</CntkCsAssemblyVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
