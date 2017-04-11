@@ -6,6 +6,7 @@
 
 from __future__ import division
 import numpy as np
+import cntk as C
 from .. import *
 from cntk import parameter, input
 
@@ -236,3 +237,9 @@ def test_sweep_based_schedule(tmpdir, device_id):
     data = mbs.next_minibatch(30, input_map=input_map)
     trainer.train_minibatch(data, outputs=[z.output])
     assert learner.learning_rate() == 0.0
+
+
+def test_learner_empy_parameters_list():
+    lr_per_sample = learning_rate_schedule(0.1, UnitType.sample)
+    with pytest.raises(ValueError):
+        learner = C.sgd([], lr_per_sample)
