@@ -23,8 +23,8 @@
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup>
-    <CntkCsAssemblyVersion>2.0rc29</CntkCsAssemblyVersion>
-    <CntkCsAssemblyVersion Condition="$(DebugBuild)">2.0rc29d</CntkCsAssemblyVersion>
+    <CntkCsAssemblyVersion>2.0rc30</CntkCsAssemblyVersion>
+    <CntkCsAssemblyVersion Condition="$(DebugBuild)">2.0rc30d</CntkCsAssemblyVersion>
   </PropertyGroup>
   <PropertyGroup Condition="$(DebugBuild)">
     <DebugSymbols>true</DebugSymbols>
