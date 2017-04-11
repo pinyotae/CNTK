@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
     <ProjectGuid>{CC8DDDCB-D53A-4B30-8596-AEF1C493DB31}</ProjectGuid>
-	<IntermediateOutputPath>$(IntDir)obj\</IntermediateOutputPath>
+    <IntermediateOutputPath>$(IntDir)obj\</IntermediateOutputPath>
     <BaseIntermediateOutputPath>$(IntDir)obj\</BaseIntermediateOutputPath>
     <OutputPath>$(OutDir)</OutputPath>
     <OutputType>Library</OutputType>
@@ -14,10 +14,10 @@
     <AssemblyName>ManagedEvalTests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <PlatformTarget>x64</PlatformTarget>
-	<WarningLevel>4</WarningLevel>
+    <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-	<CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <ErrorReport>prompt</ErrorReport>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -28,8 +28,8 @@
     <TestProjectType>UnitTest</TestProjectType>
   </PropertyGroup>
   <PropertyGroup>
-    <CntkCsAssemblyVersion>2.0rc30</CntkCsAssemblyVersion>
-    <CntkCsAssemblyVersion Condition="$(DebugBuild)">2.0rc30d</CntkCsAssemblyVersion>
+    <CntkCsAssemblyVersion>2.0rc29</CntkCsAssemblyVersion>
+    <CntkCsAssemblyVersion Condition="$(DebugBuild)">2.0rc29d</CntkCsAssemblyVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
